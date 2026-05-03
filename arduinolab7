@@ -1,0 +1,118 @@
+Zad2
+#include <Wire.h>
+#include <LiquidCrystal_I2C.h>
+
+LiquidCrystal_I2C lcd(0x27, 16, 2); // Adres zazwyczaj 0x27 lub 0x3F
+
+const int trigPin = 6;
+const int echoPin = 7;
+const int buttonPin = 8;
+
+void setup() {
+  pinMode(trigPin, OUTPUT);
+  pinMode(echoPin, INPUT);
+  pinMode(buttonPin, INPUT_PULLUP); // Przycisk do GND
+  
+  lcd.init();
+  lcd.backlight();
+}
+
+void loop() {
+  if (digitalRead(buttonPin) == LOW) { // Reakcja na wciśnięcie
+    digitalWrite(trigPin, LOW);
+    delayMicroseconds(2);
+    digitalWrite(trigPin, HIGH);
+    delayMicroseconds(10);
+    digitalWrite(trigPin, LOW);
+
+    long czas = pulseIn(echoPin, HIGH);
+    int dystans = czas * 0.034 / 2;
+
+    lcd.clear();
+    lcd.setCursor(0, 0);
+    lcd.print("Dystans: ");
+    lcd.print(dystans);
+    lcd.print(" cm");
+    
+    delay(500); // Odczekanie żeby nie "migało" przy trzymaniu
+  }
+}
+
+zad3
+void loop() {
+  digitalWrite(trigPin, LOW);
+  delayMicroseconds(2);
+  digitalWrite(trigPin, HIGH);
+  delayMicroseconds(10);
+  digitalWrite(trigPin, LOW);
+
+  long czas = pulseIn(echoPin, HIGH);
+  int dystans = czas * 0.034 / 2;
+
+  lcd.clear();
+  lcd.print("Auto (5s):");
+  lcd.setCursor(0, 1);
+  lcd.print(dystans);
+  lcd.print(" cm");
+
+  delay(5000); // Równo 5 sekund przerwy
+}
+
+zad4
+
+void loop() {
+  long suma = 0;
+
+  for(int i = 0; i < 3; i++) {
+    digitalWrite(trigPin, LOW);
+    delayMicroseconds(2);
+    digitalWrite(trigPin, HIGH);
+    delayMicroseconds(10);
+    digitalWrite(trigPin, LOW);
+    
+    long czas = pulseIn(echoPin, HIGH);
+    suma += (czas * 0.034 / 2);
+    delay(50); // Krótki odstęp między odczytami
+  }
+
+  int srednia = suma / 3;
+
+  lcd.clear();
+  lcd.print("Srednia z 3:");
+  lcd.setCursor(0, 1);
+  lcd.print(srednia);
+  lcd.print(" cm");
+  
+  delay(1000); // Opóźnienie przed kolejną serią
+}
+
+zad5
+void loop() {
+  digitalWrite(trigPin, LOW);
+  delayMicroseconds(2);
+  digitalWrite(trigPin, HIGH);
+  delayMicroseconds(10);
+  digitalWrite(trigPin, LOW);
+
+  long czas = pulseIn(echoPin, HIGH);
+  int dystans = czas * 0.034 / 2;
+
+  lcd.clear();
+  lcd.setCursor(0, 0);
+  lcd.print("Dist: ");
+  lcd.print(dystans);
+  lcd.print("cm");
+
+  lcd.setCursor(0, 1);
+  if (dystans > 50) {
+    lcd.print("Szybka jazda");
+  } 
+  else if (dystans >= 10 && dystans <= 50) {
+    lcd.print("Wolna jazda");
+  } 
+  else {
+    lcd.print("STOP i obrot");
+  }
+
+  delay(200); // Niewielkie opóźnienie dla stabilności wyświetlacza
+}
