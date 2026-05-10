@@ -1,0 +1,198 @@
+// --- ZADANIE 1 i 2: MASTER ---
+#include <Wire.h>
+
+bool stanDiody = false;
+
+void setup() {
+  Wire.begin(); // Dołączenie do magistrali I2C jako Master
+}
+
+void loop() {
+  stanDiody = !stanDiody; // Zmiana stanu
+  
+  Wire.beginTransmission(8); // Rozpoczęcie transmisji do urządzenia o adresie 8
+  Wire.write(stanDiody ? 1 : 0); // Wysłanie 1 (włącz) lub 0 (wyłącz)
+  Wire.endTransmission();    // Zakończenie transmisji
+  
+  delay(1000); // Odczekanie 1 sekundy cyklicznie
+}
+// --- ZADANIE 1 i 2: SLAVE ---
+#include <Wire.h>
+
+const int ledPin = 13; // Wbudowana dioda na płytce Arduino
+
+void setup() {
+  pinMode(ledPin, OUTPUT);
+  Wire.begin(8);                // Dołączenie do magistrali I2C z adresem 8
+  Wire.onReceive(odbierzDane);  // Rejestracja zdarzenia odbioru danych
+}
+
+void loop() {
+  delay(100); // Pętla główna, układ czeka na przerwania z I2C
+}
+
+void odbierzDane(int howMany) {
+  if (Wire.available()) {
+    int stan = Wire.read(); // Odczytanie przesłanej wartości od Mastera
+    digitalWrite(ledPin, stan == 1 ? HIGH : LOW); // Zmiana stanu diody
+  }
+}
+
+// --- ZADANIE 3 i 4: MASTER ----------------------------------------------------------------------------------------------------------------------
+#include <Wire.h>
+#include <Keypad.h>
+#include <LiquidCrystal_I2C.h>
+
+// Konfiguracja LCD (adres I2C domyślny to często 0x27)
+LiquidCrystal_I2C lcd(0x27, 16, 2);
+
+// Konfiguracja klawiatury membranowej 4x3 (bez przycisków ABCD)
+const byte ROWS = 4; 
+const byte COLS = 3; 
+char keys[ROWS][COLS] = {
+  {'1','2','3'},
+  {'4','5','6'},
+  {'7','8','9'},
+  {'*','0','#'}
+};
+byte rowPins[ROWS] = {9, 8, 7, 6}; 
+byte colPins[COLS] = {5, 4, 3}; 
+
+Keypad keypad = Keypad(makeKeymap(keys), rowPins, colPins, ROWS, COLS);
+
+void setup() {
+  Wire.begin();
+  lcd.init();
+  lcd.backlight();
+  lcd.setCursor(0, 0);
+  lcd.print("Kolor: Brak");
+}
+
+void loop() {
+  char key = keypad.getKey();
+
+  if (key) {
+    char kolorCmd = 0;
+    String nazwaKoloru = "";
+
+    // Klawisz 1 - Czerwony, 2 - Zielony, 3 - Niebieski
+    if (key == '1') { kolorCmd = 'R'; nazwaKoloru = "Czerwony "; }
+    else if (key == '2') { kolorCmd = 'G'; nazwaKoloru = "Zielony  "; }
+    else if (key == '3') { kolorCmd = 'B'; nazwaKoloru = "Niebieski"; }
+
+    if (kolorCmd != 0) {
+      // Wysłanie komendy do urządzenia Slave po I2C
+      Wire.beginTransmission(8);
+      Wire.write(kolorCmd);
+      Wire.endTransmission();
+
+      // Wyświetlenie informacji o kolorach na ekranie LCD
+      lcd.setCursor(0, 0);
+      lcd.print("Kolor:          "); // Czyszczenie pierwszej linii
+      lcd.setCursor(7, 0);
+      lcd.print(nazwaKoloru);
+    }
+  }
+}
+// --- ZADANIE 3 i 4: SLAVE ---
+#include <Wire.h>
+
+// Piny diody RGB (należy użyć pinów PWM)
+const int pinR = 11;
+const int pinG = 10;
+const int pinB = 9;
+
+void setup() {
+  pinMode(pinR, OUTPUT);
+  pinMode(pinG, OUTPUT);
+  pinMode(pinB, OUTPUT);
+  
+  zgasWszystko();
+
+  Wire.begin(8); // Dołączenie do I2C z adresem 8
+  Wire.onReceive(odbierzKomende);
+}
+
+void loop() {
+  delay(100);
+}
+
+void zgasWszystko() {
+  digitalWrite(pinR, LOW);
+  digitalWrite(pinG, LOW);
+  digitalWrite(pinB, LOW);
+}
+
+void odbierzKomende(int howMany) {
+  if (Wire.available()) {
+    char komenda = Wire.read();
+    zgasWszystko(); // Zgaszenie poprzednio wyświetlanego koloru
+    
+    // Włączenie odpowiedniego koloru zależnie od odebranej komendy
+    if (komenda == 'R') digitalWrite(pinR, HIGH);
+    if (komenda == 'G') digitalWrite(pinG, HIGH);
+    if (komenda == 'B') digitalWrite(pinB, HIGH);
+  }
+}
+// --- ZADANIE 5: MASTER (USART) ---------------------------------------------------------------------------------------------------------------------
+#include <Keypad.h>
+
+const byte ROWS = 4; 
+const byte COLS = 3; 
+char keys[ROWS][COLS] = {
+  {'1','2','3'},
+  {'4','5','6'},
+  {'7','8','9'},
+  {'*','0','#'}
+};
+byte rowPins[ROWS] = {9, 8, 7, 6}; 
+byte colPins[COLS] = {5, 4, 3}; 
+
+Keypad keypad = Keypad(makeKeymap(keys), rowPins, colPins, ROWS, COLS);
+
+void setup() {
+  // Inicjalizacja sprzętowego portu szeregowego USART zamiast I2C
+  Serial.begin(9600); 
+}
+
+void loop() {
+  char key = keypad.getKey();
+
+  if (key) {
+    // Wysyłanie przez TX zamiast I2C
+    if (key == '1') Serial.write('R'); 
+    else if (key == '2') Serial.write('G');
+    else if (key == '3') Serial.write('B');
+  }
+}
+// --- ZADANIE 5: SLAVE (USART) ---
+const int pinR = 11;
+const int pinG = 10;
+const int pinB = 9;
+
+void setup() {
+  pinMode(pinR, OUTPUT);
+  pinMode(pinG, OUTPUT);
+  pinMode(pinB, OUTPUT);
+  zgasWszystko();
+  
+  // Inicjalizacja sprzętowego portu szeregowego USART
+  Serial.begin(9600); 
+}
+
+void loop() {
+  if (Serial.available() > 0) {
+    char komenda = Serial.read(); // Odczyt komendy z pinu RX
+    zgasWszystko();
+    
+    if (komenda == 'R') digitalWrite(pinR, HIGH);
+    if (komenda == 'G') digitalWrite(pinG, HIGH);
+    if (komenda == 'B') digitalWrite(pinB, HIGH);
+  }
+}
+
+void zgasWszystko() {
+  digitalWrite(pinR, LOW);
+  digitalWrite(pinG, LOW);
+  digitalWrite(pinB, LOW);
+}
